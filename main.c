@@ -10,11 +10,18 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/wait.h>
+#include <stdbool.h>
 
 #include"sem.h"
 #include"file.h"
 #define ui unsigned int 
 #define NB_TECH 4
+
+typedef struct {
+        long  type;
+        int dest;
+		pid_t who;
+        } dm;
 
 int sem_id ;
 
@@ -65,17 +72,19 @@ seminit("/home/",3);
     key_t key;	
     int longMSG ;	    
 	  if ((key = ftok("/home/machine/lo41", 'A')) == -1) {
+	clearFile(2);	
 	perror("Erreur de creation de la clé \n");
 	exit(1);
     }
 
     if ((td = msgget(key, 0750 | IPC_CREAT | IPC_EXCL)) == -1) {
+	clearFile(2);
 	perror("Erreur de creation de la file\n");
 	exit(1);
     }
 
 
-printf("asc\n");
+printf("td=%d\n",td);
 //valeur par défaut de nbt:nb techniciens , nbr:nb résidents
 ascenseur1();
 ascenseur2();
@@ -83,9 +92,32 @@ ascenseur3();
 
 //shared memory 
 int* nd ;
-
+/* Shared status files 
+int* idAsc1;int* idAsc2;int* idAsc3;
+bool* dispo1;bool* dispo2;bool* dispo3;
+(*dispo1)=true;
+(*dispo2)=true;
+(*dispo3)=true;
+*/
 int shmid = shmget(IPC_PRIVATE, sizeof(int), 0666);
-nd = (int *)shmat(shmid, NULL, 0);
+nd = (int *) shmat(shmid, NULL, 0);
+/*
+shmid = shmget(IPC_PRIVATE, sizeof(int), 0666);
+idAsc1 = (int *) shmat(shmid, NULL, 0);
+shmid = shmget(IPC_PRIVATE, sizeof(int), 0666);
+idAsc2 = (int *) shmat(shmid, NULL, 0);
+shmid = shmget(IPC_PRIVATE, sizeof(int), 0666);
+idAsc3 = (int *) shmat(shmid, NULL, 0);
+
+shmid = shmget(IPC_PRIVATE, sizeof(bool), 0666);
+dispo1 = (bool*) shmat(shmid, NULL, 0);
+
+shmid = shmget(IPC_PRIVATE, sizeof(bool), 0666);
+dispo2 = (bool*) shmat(shmid, NULL, 0);
+
+shmid = shmget(IPC_PRIVATE, sizeof(bool), 0666);
+dispo3 = (bool*) shmat(shmid, NULL, 0);
+*/
 											// 0 -> nombre délivreures , 1 sémaphore d'attente , 2 COUPETIF
 //creation des delivreures 
 V(0);V(1);
@@ -101,6 +133,17 @@ for(int i=0;i<10;i++){
 		}
 		else 
 			V(0);
+printf("child%d:\n",(i++));
+		//put msg to terminal
+		dm message;
+		message.type=1;
+		message.dest=1;
+		message.who=getpid();
+
+	   if (msgsnd(td, &message, sizeof(dm) - 4,0) == -1) {
+printf("n'as pas pu mettre message\n");
+	    }
+
 		V(2);
 
 		P(0);
@@ -115,8 +158,13 @@ for(int i=0;i<10;i++){
 int i=0;
 while(1){
 	P(2);
-	printf("%d:Je gère\n",(i++));
-}
+//	if( (*dispo1)){
+	dm message;
+	if( msgrcv(td, &message, sizeof(dm) - 4, 1,0) == -1) 
+	    perror("Erreur de lecture reponse serveur\n");	
+	printf("%d:qqn a mis(dest=%d,who=%ld)\n",(i++),message.dest,(long) message.who);
+
+printf("pere\n");}
 /*Msg msg;
 long getMsg;
 P(1);
