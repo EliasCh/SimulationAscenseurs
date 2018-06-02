@@ -27,10 +27,10 @@ typedef struct {
 
 int sem_id,td,ta;
 
-void ascenseur1(int ta){
+void ascenseur1(int ta,int** dispo1){
 	if(!fork()){
 	while(1){
-			P(3);
+			P(3);	
 			printf("Asc1:Ouverture porte niv0\n");
 			for(int i=0;i<5;i++){
 				sleep(1);	
@@ -38,8 +38,11 @@ void ascenseur1(int ta){
 				if( msgrcv(ta, &message, sizeof(dm) - 4, 1,0) == -1) 
 						perror("Erreur de lecture reponse dans l'asc\n");
 				printf("Asc1: dest %d,message=%s,from%ld\n",message.dest,message.txt,(long )message.who);
+				V(4);			
 			}	
-//			(*dispo1)=0;
+		
+								(*(*dispo1))=0;
+
 		}
 		
 		exit(0);
@@ -66,7 +69,7 @@ int main() {
 //gestion signaux 
 	signal(SIGINT,clearFile);
 
-seminit("/home/",4);
+seminit("/home/",5);
 
 //une file
     key_t key;	
@@ -88,16 +91,6 @@ seminit("/home/",4);
 	perror("Erreur de creation de la file\n");
 	exit(1);
     }
-
-
-
-printf("td=%d\n",td);
-V(3);
-//valeur par défaut de nbt:nb techniciens , nbr:nb résidents
-ascenseur1(ta);
-ascenseur2(ta);
-ascenseur3(ta);
-
 //shared memory 
 int* nd ;
 // Shared status files 
@@ -116,8 +109,16 @@ dispo3 = (int*) shmat(shmid, NULL, 0);
 (*dispo1)=1;
 (*dispo2)=1;
 (*dispo3)=1;
-printf("here\n");
-											// 0 -> nombre délivreures , 1 sémaphore d'attente , 2 COUPETIF
+
+
+
+printf("td=%d\n",td);
+V(3);
+//valeur par défaut de nbt:nb techniciens , nbr:nb résidents
+ascenseur1(ta,&dispo1);
+ascenseur2(ta);
+ascenseur3(ta);
+										// 0 -> nombre délivreures , 1 sémaphore d'attente , 2 COUPETIF
 //creation des delivreures 
 V(0);V(1);
 for(int i=0;i<10;i++){
@@ -173,6 +174,8 @@ while(1){
 			printf("n'as pas pu mettre message\n");
 	    }
 		V(3);
+		P(4);
+
 	continue;
 	}
 if( (*dispo2)){
