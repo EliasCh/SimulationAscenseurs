@@ -11,9 +11,10 @@
 #include <sys/shm.h>
 #include <sys/wait.h>
 #include <stdbool.h>
+#include<string.h>
 
 #include"sem.h"
-#include"file.h"
+//#include"file.h"
 #define ui unsigned int 
 #define NB_TECH 4
 
@@ -21,41 +22,40 @@ typedef struct {
         long  type;
         int dest;
 		pid_t who;
+		char* txt;
         } dm;
 
-int sem_id ;
+int sem_id,td,ta;
 
-void ascenseur1(){
+void ascenseur1(int ta){
 	if(!fork()){
-/*		while(1){
-			int max=getMax();
-			for(int i=0;i<max;i++){
-				
-				sleep(1);
-				//if (i==element) drop 
-			}
-			//sleep P(X);w
+	while(1){
+			P(3);
+			printf("Asc1:Ouverture porte niv0\n");
+			for(int i=0;i<5;i++){
+				sleep(1);	
+				dm message;	
+				if( msgrcv(ta, &message, sizeof(dm) - 4, 1,0) == -1) 
+						perror("Erreur de lecture reponse dans l'asc\n");
+				printf("Asc1: dest %d,message=%s,from%ld\n",message.dest,message.txt,(long )message.who);
+			}	
+//			(*dispo1)=0;
 		}
-*/
 		
 		exit(0);
 	}
-	else 
-		wait(0);
 }
-void ascenseur2(){
+void ascenseur2(int ta){
 if(!fork()){
 exit(0);
 }
-else wait(0);
 }
-void ascenseur3(){
+void ascenseur3(int ta){
 if(!fork()){
 exit(0);
 }
-else wait(0);
 }
-int td;
+
 void clearFile(int sig){
    msgctl(td, IPC_RMID, NULL);
 	libereSem(sem_id);
@@ -66,7 +66,7 @@ int main() {
 //gestion signaux 
 	signal(SIGINT,clearFile);
 
-seminit("/home/",3);
+seminit("/home/",4);
 
 //une file
     key_t key;	
@@ -83,41 +83,40 @@ seminit("/home/",3);
 	exit(1);
     }
 
+    if ((ta = msgget(IPC_PRIVATE, 0750 | IPC_CREAT )) == -1) {
+	clearFile(2);
+	perror("Erreur de creation de la file\n");
+	exit(1);
+    }
+
+
 
 printf("td=%d\n",td);
+V(3);
 //valeur par défaut de nbt:nb techniciens , nbr:nb résidents
-ascenseur1();
-ascenseur2();
-ascenseur3();
+ascenseur1(ta);
+ascenseur2(ta);
+ascenseur3(ta);
 
 //shared memory 
 int* nd ;
-/* Shared status files 
-int* idAsc1;int* idAsc2;int* idAsc3;
-bool* dispo1;bool* dispo2;bool* dispo3;
-(*dispo1)=true;
-(*dispo2)=true;
-(*dispo3)=true;
-*/
+// Shared status files 
+int* dispo1;int* dispo2;int* dispo3;
 int shmid = shmget(IPC_PRIVATE, sizeof(int), 0666);
 nd = (int *) shmat(shmid, NULL, 0);
-/*
+
 shmid = shmget(IPC_PRIVATE, sizeof(int), 0666);
-idAsc1 = (int *) shmat(shmid, NULL, 0);
-shmid = shmget(IPC_PRIVATE, sizeof(int), 0666);
-idAsc2 = (int *) shmat(shmid, NULL, 0);
-shmid = shmget(IPC_PRIVATE, sizeof(int), 0666);
-idAsc3 = (int *) shmat(shmid, NULL, 0);
+dispo1 = (int*) shmat(shmid, NULL, 0);
 
 shmid = shmget(IPC_PRIVATE, sizeof(bool), 0666);
-dispo1 = (bool*) shmat(shmid, NULL, 0);
+dispo2 = (int*) shmat(shmid, NULL, 0);
 
 shmid = shmget(IPC_PRIVATE, sizeof(bool), 0666);
-dispo2 = (bool*) shmat(shmid, NULL, 0);
-
-shmid = shmget(IPC_PRIVATE, sizeof(bool), 0666);
-dispo3 = (bool*) shmat(shmid, NULL, 0);
-*/
+dispo3 = (int*) shmat(shmid, NULL, 0);
+(*dispo1)=1;
+(*dispo2)=1;
+(*dispo3)=1;
+printf("here\n");
 											// 0 -> nombre délivreures , 1 sémaphore d'attente , 2 COUPETIF
 //creation des delivreures 
 V(0);V(1);
@@ -139,9 +138,9 @@ printf("child%d:\n",(i++));
 		message.type=1;
 		message.dest=1;
 		message.who=getpid();
-
+		message.txt="from child";
 	   if (msgsnd(td, &message, sizeof(dm) - 4,0) == -1) {
-printf("n'as pas pu mettre message\n");
+			printf("n'as pas pu mettre message\n");
 	    }
 
 		V(2);
@@ -156,13 +155,34 @@ printf("n'as pas pu mettre message\n");
 	}
 }
 int i=0;
+
 while(1){
 	P(2);
-//	if( (*dispo1)){
 	dm message;
 	if( msgrcv(td, &message, sizeof(dm) - 4, 1,0) == -1) 
 	    perror("Erreur de lecture reponse serveur\n");	
 	printf("%d:qqn a mis(dest=%d,who=%ld)\n",(i++),message.dest,(long) message.who);
+	if( (*dispo1)){
+	printf("asc1 dispo\n");	
+		dm masc;
+		masc.type=1;
+		masc.dest=1;
+		masc.who=message.who;
+		masc.txt=message.txt;
+   	    if (msgsnd(ta, &masc, sizeof(dm) - 4,0) == -1) {
+			printf("n'as pas pu mettre message\n");
+	    }
+		V(3);
+	continue;
+	}
+if( (*dispo2)){
+	printf("asc2 dispo\n");
+	continue;	
+}
+if( (*dispo3)){
+	printf("asc3 dispo\n");	
+	continue;
+}
 
 printf("pere\n");}
 /*Msg msg;
