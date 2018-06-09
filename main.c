@@ -12,7 +12,7 @@
 #include <sys/wait.h>
 #include <stdbool.h>
 #include<string.h>
-
+#include<fcntl.h>
 #include"sem.h"
 //#include"file.h"
 #define ui unsigned int 
@@ -31,6 +31,17 @@ void swap(int *xp, int *yp)
     int temp = *xp;
     *xp = *yp;
     *yp = temp;
+}
+void translaterArr(int arr[],int dep,int n){
+	for(int i=dep;i<(n-1);i++)
+		arr[i]=arr[i+1];
+	arr[n-1]=0;
+}
+int nombreLibre(int arr[],int n){
+	int l=0;
+	for(int i=0;i<n;i++)
+		if(arr[i]==0) l++;
+	return l;
 }
 void selectionSort(int arr[], int n)
 {
@@ -51,6 +62,10 @@ void selectionSort(int arr[], int n)
 }
 void ascenseur1(int ta,int** dispo1){
 	if(!fork()){
+	
+	int asc1=open("asc1.txt",O_WRONLY|O_CREAT,0666);
+	close(1);
+	dup(asc1);
 	while(1){
 			P(3);	
 			printf("Asc1:Ouverture porte niv0\n");
@@ -70,12 +85,12 @@ void ascenseur1(int ta,int** dispo1){
 			selectionSort(arr,5);
 			printf("arr: {%d,%d,%d,%d,%d}\n",arr[0],arr[1],arr[2],arr[3],arr[4]);
 			int prv=0;		
-			for(int i=0;i<5;i++){
+			for(int i=0;i<5;i++){				
 				printf("\ndeplacement vers %d\n",arr[i]);
 				for(int j=prv;j<arr[i];j++){
 					sleep(1);
 					printf("-");
-				}					
+				}		
 				prv=arr[i];
 			}
 			printf("Asc1:retour vers niv0\n");
@@ -90,6 +105,10 @@ void ascenseur1(int ta,int** dispo1){
 //5-6
 void ascenseur2(int ta,int** dispo2){
 if(!fork()){
+	int asc2=open("asc2.txt",O_WRONLY|O_CREAT,0666);
+	close(1);
+	dup(asc2);
+		
 	while(1){
 			P(5);	
 			printf("Asc2:Ouverture porte niv0\n");
@@ -112,9 +131,14 @@ if(!fork()){
 exit(0);
 }
 }
+
 void ascenseur3(int ta,int** dispo3){
 if(!fork()){
-while(1){
+	int asc3=open("asc3.txt",O_WRONLY|O_CREAT,0666);
+	close(1);
+	dup(asc3);
+	
+	while(1){
 			P(10);	
 			printf("Asc3:Ouverture porte niv0\n");
 			if(			(*(*dispo3))==0) continue;
@@ -139,6 +163,9 @@ exit(0);
 void clearFile(int sig){
    msgctl(td, IPC_RMID, NULL);
 	libereSem(sem_id);
+		fclose(fopen("asc3.txt","w"));
+	fclose(fopen("asc2.txt","w"));
+	fclose(fopen("asc1.txt","w"));
 	signal(SIGINT,SIG_DFL);
 	raise(SIGINT);
 }
@@ -323,6 +350,7 @@ if(!fork()){
 	exit(0);
 }
 */
+
 
 
 
