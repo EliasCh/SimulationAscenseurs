@@ -17,6 +17,9 @@
 //#include"file.h"
 #define ui unsigned int 
 #define NB_TECH 4
+#define MAX1 5
+#define MAX2 5
+#define MAX3 5
 
 typedef struct {
         long  type;
@@ -25,7 +28,7 @@ typedef struct {
 		char* txt;
         } dm;
 
-int sem_id,td,ta;
+int sem_id,td,ta,da;
 void swap(int *xp, int *yp)
 {
     int temp = *xp;
@@ -42,6 +45,16 @@ int nombreLibre(int arr[],int n){
 	for(int i=0;i<n;i++)
 		if(arr[i]==0) l++;
 	return l;
+}
+int posZero(int arr[],int n){
+	for(int i=0;i<n;i++)
+		if(arr[i]==0) return i;
+return -1;
+}
+int allZeros(int arr[],int n){
+	for(int i=0;i<n;i++)
+		if(arr[i]!=0) return 0;
+	return 1;
 }
 void selectionSort(int arr[], int n)
 {
@@ -60,42 +73,88 @@ void selectionSort(int arr[], int n)
         swap(&arr[min_idx], &arr[i]);
     }
 }
-void ascenseur1(int ta,int** dispo1){
+int min(long a,int b){
+	if(a<b) return (int) a;
+	return (int) b;
+}
+int max(long a,int b){
+	if(a>b) return (int) a;
+	return (int) b;
+}
+void ascenseur1(int ta,int da){
 	if(!fork()){
 	
 	int asc1=open("asc1.txt",O_WRONLY|O_CREAT,0666);
 	close(1);
 	dup(asc1);
+	int dep=0;
+	long term=0;
+	dm mid;				
+/*	if( msgrcv(ta, &mid, sizeof(dm) - 4, 1,IPC_NOWAIT) == -1) {
+		perror("a pas pu lire l'id du terminal\n");
+	}
+	else
+		printf("pid=%ld\n",term);
+*/	int arr[5]={0,0,0,0,0};
 	while(1){
-			P(3);	
-			printf("Asc1:Ouverture porte niv0\n");
-			if((*(*dispo1))==0) continue;
-			int arr[5]={0,0,0,0,0};
-			for(int i=0;i<5;i++){
-				sleep(1);	
-				dm message;	
-				if( msgrcv(ta, &message, sizeof(dm) - 4, 1,0) == -1) 
-						perror("Erreur de lecture reponse dans l'asc2\n");
-				arr[i]=message.dest;
-				printf("Asc1: dest %d,message=%s,from%ld\n",message.dest,message.txt,(long )message.who);
-				if( i==4) 			(*(*dispo1))=0;		
-				V(4);		
-				//printf("********* i=%d\n",i);	
-			}	
+				printf("Asc1:Ouverture porte niv0\n");
+				printf("Attendre si quelqu'un veut monter a l'etage 0\n");
+				for(int i=0;i<5;i++){
+					sleep(1);				
+					dm message;				
+					if( msgrcv(ta, &message, sizeof(dm) - 4, 1,IPC_NOWAIT) != -1) {
+						arr[posZero(arr,5)]=message.dest;	
+					}
+				}	
 			selectionSort(arr,5);
 			printf("arr: {%d,%d,%d,%d,%d}\n",arr[0],arr[1],arr[2],arr[3],arr[4]);
-			int prv=0;		
-			for(int i=0;i<5;i++){				
-				printf("\ndeplacement vers %d\n",arr[i]);
-				for(int j=prv;j<arr[i];j++){
+			long prv=0;		
+			while(!allZeros(arr,5)){				
+				printf("\ndeplacement vers %d depuis%ld\n",arr[0],prv);
+				for(int j=min(prv,arr[0]);j<max(prv,arr[0])-1;j++){
 					sleep(1);
+					dep++;
 					printf("-");
-				}		
-				prv=arr[i];
+					/*if(dep==MAX1){
+						printf("panne a %d,pid=%ld",j,message.who);
+						dm mpanne;
+						mpanne.type=4;
+						mpanne.dest=j;
+						mpanne.who=getpid();
+						mpanne.txt="";
+				   	    if (msgsnd(ta, &mpanne, sizeof(dm) - 4,0) == -1) {
+							printf("n'as pas pu mettre message de panne\n");
+						}	
+									
+					}*/
+						
+				}
+				prv=arr[0];
+				printf("prv=%ld\n",prv);
+				while(arr[0]==arr[1]){
+					translaterArr(arr,0,5);		
+				}
+				translaterArr(arr,0,5);
+				printf("arr: {%d,%d,%d,%d,%d}\n",arr[0],arr[1],arr[2],arr[3],arr[4]);	
+				int x=nombreLibre(arr,5);
+				printf("Attendre si quelqu'un veut monter a l'etage %ld\n",prv);
+				if(prv!=0){
+					for(int i=0;i<x;i++){
+						sleep(1);				
+						dm message;		
+					printf("prv=%ld\n",prv);		
+						if( msgrcv(da, &message, sizeof(dm) - 4, prv,IPC_NOWAIT) != -1) {
+							arr[posZero(arr,5)]=message.dest;	
+							printf("prv=%ld=type=%ld\n",prv,message.type);
+						}
+					}	
+				}
 			}
 			printf("Asc1:retour vers niv0\n");
-			sleep(arr[4]);
-			(*(*dispo1))=1;
+			for(int i=0;i<prv;i++){
+				printf("-");				
+				sleep(1);
+			}
 
 		}
 		
@@ -103,61 +162,127 @@ void ascenseur1(int ta,int** dispo1){
 	}
 }
 //5-6
-void ascenseur2(int ta,int** dispo2){
-if(!fork()){
+void ascenseur2(int ta,int da){
+	if(!fork()){
+	
 	int asc2=open("asc2.txt",O_WRONLY|O_CREAT,0666);
 	close(1);
 	dup(asc2);
-		
+	int arr[3]={0,0,0};
 	while(1){
-			P(5);	
-			printf("Asc2:Ouverture porte niv0\n");
-			if((*(*dispo2))==0) continue;		
-			for(int i=0;i<3;i++){
-				sleep(1);	
-				dm message;	
-				if( msgrcv(ta, &message, sizeof(dm) - 4, 2,0) == -1) 
-						perror("Erreur de lecture reponse dans l'asc2\n");
-				printf("Asc2: dest %d,message=%s,from%ld\n",message.dest,message.txt,(long )message.who);
-				
-				V(6);		
-				//printf("********* i=%d\n",i);	
-			}	
-		
-								(*(*dispo2))=0;
+				printf("Asc2:Ouverture porte niv0\n");
+				printf("Attendre si quelqu'un veut monter a l'etage 0\n");
+				for(int i=0;i<3;i++){
+					sleep(1);				
+					dm message;				
+					if( msgrcv(ta, &message, sizeof(dm) - 4, 2,IPC_NOWAIT) != -1) {
+						arr[posZero(arr,3)]=message.dest;	
+					}
+				}	
+			selectionSort(arr,3);
+			printf("arr: {%d,%d,%d}\n",arr[0],arr[1],arr[2]);
+			long prv=0;		
+			while(!allZeros(arr,3)){				
+				printf("\ndeplacement vers %d depuis%ld\n",arr[0],prv);
+				for(int j=min(prv,arr[0]);j<max(prv,arr[0])-1;j++){
+					sleep(1);
+					printf("-");
+				}
+				prv=arr[0];
+				printf("prv=%ld\n",prv);
+				while(arr[0]==arr[1]){
+					translaterArr(arr,0,3);		
+				}
+				translaterArr(arr,0,3);
+				printf("arr: {%d,%d,%d}\n",arr[0],arr[1],arr[2]);	
+				int x=nombreLibre(arr,3);
+				printf("Attendre si quelqu'un veut monter a l'etage %ld\n",prv);
+				if(prv!=0){
+					for(int i=0;i<x;i++){
+						sleep(1);				
+						dm message;		
+					printf("prv=%ld\n",prv);		
+						if( msgrcv(da, &message, sizeof(dm) - 4, prv,IPC_NOWAIT) != -1) {
+							arr[posZero(arr,3)]=message.dest;	
+							printf("prv=%ld=type=%ld\n",prv,message.type);
+						}
+					}	
+				}
+			}
+			printf("Asc2:retour vers niv0\n");
+			for(int i=0;i<prv;i++){
+				printf("-");				
+				sleep(1);
+			}
 
 		}
+		
+		exit(0);
+	}
 
-exit(0);
-}
 }
 
-void ascenseur3(int ta,int** dispo3){
-if(!fork()){
+void ascenseur3(int ta,int da){
+	if(!fork()){
+	
 	int asc3=open("asc3.txt",O_WRONLY|O_CREAT,0666);
 	close(1);
 	dup(asc3);
-	
+	int arr[2]={0,0};
 	while(1){
-			P(10);	
-			printf("Asc3:Ouverture porte niv0\n");
-			if(			(*(*dispo3))==0) continue;
-			for(int i=0;i<2;i++){
-				sleep(1);	
-				dm message;	
-				if( msgrcv(ta, &message, sizeof(dm) - 4, 3,0) == -1) 
-						perror("Erreur de lecture reponse dans l'asc3\n");
-				printf("Asc3: dest %d,message=%s,from%ld\n",message.dest,message.txt,(long )message.who);
-				V(11);		
-				//printf("********* i=%d\n",i);	
-			}	
-		
-								(*(*dispo3))=0;
+				printf("Asc3:Ouverture porte niv0\n");
+				printf("Attendre si quelqu'un veut monter a l'etage 0\n");
+				for(int i=0;i<2;i++){
+					sleep(1);				
+					dm message;				
+					if( msgrcv(ta, &message, sizeof(dm) - 4, 3,IPC_NOWAIT) != -1) {
+						arr[posZero(arr,2)]=message.dest;	
+					}
+				}	
+			selectionSort(arr,2);
+			while(arr[0]==0){
+					translaterArr(arr,0,2);		
+				}
+			printf("arr: {%d,%d}\n",arr[0],arr[1]);
+			long prv=0;		
+			while(!allZeros(arr,2)){				
+				printf("\ndeplacement vers %d depuis%ld\n",arr[0],prv);
+				for(int j=min(prv,arr[0]);j<max(prv,arr[0])-1;j++){
+					sleep(1);
+					printf("->");
+				}
+				prv=arr[0];
+				printf("prv=%ld\n",prv);
+				while(arr[0]==arr[1]){
+					translaterArr(arr,0,2);		
+				}
+				translaterArr(arr,0,2);
+				printf("arr: {%d,%d}\n",arr[0],arr[1]);	
+				int x=nombreLibre(arr,2);
+				printf("Attendre si quelqu'un veut monter a l'etage %ld\n",prv);
+				if(prv!=0){
+					for(int i=0;i<x;i++){
+						sleep(1);				
+						dm message;		
+					printf("prv=%ld\n",prv);		
+						if( msgrcv(da, &message, sizeof(dm) - 4, prv,IPC_NOWAIT) != -1) {
+							arr[posZero(arr,2)]=message.dest;	
+							printf("prv=%ld=type=%ld\n",prv,message.type);
+						}
+					}	
+				}
+			}
+			printf("Asc3:retour vers niv0\n");
+			for(int i=0;i<prv;i++){
+				printf("->");				
+				sleep(1);
+			}
 
 		}
+		
+		exit(0);
+	}
 
-exit(0);
-}
 }
 
 void clearFile(int sig){
@@ -195,6 +320,20 @@ seminit("/home/",11);
 	perror("Erreur de creation de la file\n");
 	exit(1);
     }
+	/*dm mid;
+	mid.type=1;
+	mid.dest=0;
+	mid.who=getpid();
+	mid.txt="";
+	if (msgsnd(ta, &mid, sizeof(dm) - 4,0) == -1) {
+		printf("n'as pas pu mettre message de panne\n");
+	}
+	*/
+ 	if ((da = msgget(IPC_PRIVATE, 0750 | IPC_CREAT )) == -1) {
+	clearFile(2);
+	perror("Erreur de creation de la file\n");
+	exit(1);
+    }
 //shared memory 
 int* nd ;
 // Shared status files 
@@ -219,12 +358,12 @@ dispo3 = (int*) shmat(shmid, NULL, 0);
 printf("td=%d\n",td);
 //V(3);
 //valeur par défaut de nbt:nb techniciens , nbr:nb résidents
-ascenseur1(ta,&dispo1);
-ascenseur2(ta,&dispo2);
-ascenseur3(ta,&dispo3);
+ascenseur1(ta,da);
+ascenseur2(ta,da);
+ascenseur3(ta,da);
 										// 0 -> nombre délivreures , 1 sémaphore d'attente , 2 COUPETIF
 //creation des delivreures 
-V(0);V(1);V(7);V(8);V(9);
+V(0);V(1);V(8);V(9);
 for(int i=0;i<10;i++){
 	if(!fork()){
 		P(0);
@@ -256,21 +395,31 @@ for(int i=0;i<10;i++){
 		}
 		(*nd)--;
 		V(0);
+		if(i==1) {
+			dm messages;
+			messages.type=6;
+			messages.dest=1;
+			messages.who=getpid();
+			messages.txt="from child";
+			if (msgsnd(da, &messages, sizeof(dm) - 4,0) == -1) {
+			printf("n'as pas pu mettre message retour\n");
+	    	}
+		}
 		exit(0);
 	}
 }
 int i=0;
 
 while(1){
+	printf("pid=%ld\n",getpid());
 	P(2);
 	dm message;
 	if( msgrcv(td, &message, sizeof(dm) - 4, 1,0) == -1) 
 	    perror("Erreur de lecture reponse serveur\n");	
 	//printf("%d:qqn a mis(dest=%d,who=%ld)\n",(i++),message.dest,(long) message.who);
+	
+if((message.dest%3)==0){
 
-P(7);	
-if( (*dispo1)){
-V(7);	
 //	printf("asc1 dispo\n");	
 		dm masc;
 		masc.type=1;
@@ -280,14 +429,8 @@ V(7);
    	    if (msgsnd(ta, &masc, sizeof(dm) - 4,0) == -1) {
 			printf("n'as pas pu mettre message\n");
 	    }
-		V(3);//CES V(3) vont générer un excès du sémaphore 3 
-		P(4);
-	continue;
 	}
-	else V(7);
-	P(8);
-	if( (*dispo2)){
-		V(8);	
+if((message.dest%3)==1){
 		//printf("asc2 dispo\n");
 		dm masc;
 		masc.type=2;
@@ -296,16 +439,10 @@ V(7);
 		masc.txt=message.txt;
    	    if (msgsnd(ta, &masc, sizeof(dm) - 4,0) == -1) {
 			printf("n'as pas pu mettre message\n");
-	    }
-		V(5);//CES V(5) vont générer un excès du sémaphore 5 
-		P(6);	
-		continue;	
+	    }		
 	}
-	else V(8);
-	P(9);
-	if( (*dispo3))
+	if(((message.dest%3)==2))
 	{
-		V(9);
 	//	printf("asc3 dispo\n");	
 		dm masc;
 		masc.type=3;
@@ -315,11 +452,9 @@ V(7);
    	    if (msgsnd(ta, &masc, sizeof(dm) - 4,0) == -1) {
 			printf("n'as pas pu mettre message\n");
 	    }
-		V(10);//CES V(5) vont générer un excès du sémaphore 5 
-		P(11);	
+	
 	//continue;
 	}
-	else V(9);
 	printf("pere\n");
 }
 /*Msg msg;
