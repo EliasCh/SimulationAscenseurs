@@ -492,7 +492,7 @@ V(3);V(4);
 //une file
     key_t key;	
     int longMSG ;	    
-	  if ((key = ftok("/home/machine/lo41", 'A')) == -1) {
+	  if ((key = ftok("/home/", 'A')) == -1) {
 	clearFile(2);	
 	perror("Erreur de creation de la clé \n");
 	exit(1);
