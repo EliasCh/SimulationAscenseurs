@@ -17,8 +17,8 @@
 //#include"file.h"
 #define ui unsigned int 
 #define NB_TECH 4
-#define MAX1 5
-#define MAX2 5
+#define MAX1 50
+#define MAX2 4
 #define MAX3 5
 
 typedef struct {
@@ -58,7 +58,6 @@ int allZeros(int arr[],int n){
 }
 void resPanne(int sigint){
 printf("pass panne\n");
-
 					dm message;				
 					if( msgrcv(ta, &message, sizeof(dm) - 4, 4,IPC_NOWAIT) != -1) {
 						if((message.dest%3)==0){
@@ -123,14 +122,16 @@ void ascenseur1(int ta,int da){
 	int asc1=open("asc1.txt",O_WRONLY|O_CREAT,0666);
 	close(1);
 	dup(asc1);
-	int dep=0;
+	int dep=-1;
 	long term=0;
 	dm mid;				
 	if( msgrcv(ta, &mid, sizeof(dm) - 4, 1,IPC_NOWAIT) == -1) {
 		perror("a pas pu lire l'id du terminal\n");
 	}
-	else
+	else{
+		printf("%ld a lu %ld dans la file\n",(long) getpid(),(long) mid.who);
 		term=(long) mid.who;
+	}
 	int arr[5]={0,0,0,0,0};
 	while(1){
 				printf("Asc1:Ouverture porte niv0\n");
@@ -148,7 +149,7 @@ void ascenseur1(int ta,int da){
 			long prv=0;		
 			while(!allZeros(arr,5)){				
 				printf("\ndeplacement vers %d depuis%ld\n",arr[0],prv);
-				for(int j=min(prv,arr[0]);j<max(prv,arr[0])-1;j++){
+				for(int j=min(prv,arr[0]);j<max(prv,arr[0]);j++){
 					sleep(1);
 					dep++;
 					printf("-");
@@ -164,7 +165,9 @@ void ascenseur1(int ta,int da){
 						}		
 						kill(term,SIGUSR1);
 						printf("about to pause\n");
-						raise(SIGSTOP);printf("resuming\n");
+						raise(SIGSTOP);
+						printf("resuming\n");
+						dep=-1;
 					}
 						
 				}
@@ -195,10 +198,10 @@ void ascenseur1(int ta,int da){
 				sleep(1);
 				dep++;
 					if(dep==MAX1){
-						printf("panne a %d,pid=%ld,term=%ld\n",j,(long)getpid(),term);
+						printf("panne a %d,pid=%ld,term=%ld\n",i,(long)getpid(),term);
 						dm mpanne;
-						mpanne.type=4;
-						mpanne.dest=j;
+						mpanne.type=4;	
+						mpanne.dest=i;
 						mpanne.who=getpid();
 						mpanne.txt="";
 				   	    if (msgsnd(ta, &mpanne, sizeof(dm) - 4,0) == -1) {
@@ -208,6 +211,7 @@ void ascenseur1(int ta,int da){
 						printf("En attente de reparation\n");
 						raise(SIGSTOP);
 						printf("Repare\n");
+						dep=-1;
 					}
 			}
 
@@ -222,6 +226,16 @@ void ascenseur2(int ta,int da){
 	int asc2=open("asc2.txt",O_WRONLY|O_CREAT,0666);
 	close(1);
 	dup(asc2);
+	int dep=-1;
+	long term=0;
+	dm mid;				
+	if( msgrcv(ta, &mid, sizeof(dm) - 4, 1,IPC_NOWAIT) == -1) {
+		perror("a pas pu lire l'id du terminal\n");
+	}
+	else{
+		printf("%ld a lu %ld dans la file\n",(long) getpid(),(long) mid.who);
+		term=(long) mid.who;
+	}
 	int arr[3]={0,0,0};
 	while(1){
 				printf("Asc2:Ouverture porte niv0\n");
@@ -238,9 +252,26 @@ void ascenseur2(int ta,int da){
 			long prv=0;		
 			while(!allZeros(arr,3)){				
 				printf("\ndeplacement vers %d depuis%ld\n",arr[0],prv);
-				for(int j=min(prv,arr[0]);j<max(prv,arr[0])-1;j++){
+				for(int j=min(prv,arr[0]);j<max(prv,arr[0]);j++){
 					sleep(1);
 					printf("-");
+					dep++;
+					if(dep==MAX2){
+						printf("panne a %d,pid=%ld,term=%ld\n",j,(long)getpid(),term);
+						dm mpanne;
+						mpanne.type=4;
+						mpanne.dest=j;
+						mpanne.who=getpid();
+						mpanne.txt="";
+				   	    if (msgsnd(ta, &mpanne, sizeof(dm) - 4,0) == -1) {
+							printf("n'as pas pu mettre message de panne\n");
+						}		
+						kill(term,SIGUSR1);
+						printf("En attente de reparation\n");
+						raise(SIGSTOP);
+						printf("Repare\n");
+						dep=-1;
+					}
 				}
 				prv=arr[0];
 				printf("prv=%ld\n",prv);
@@ -267,6 +298,23 @@ void ascenseur2(int ta,int da){
 			for(int i=0;i<prv;i++){
 				printf("-");				
 				sleep(1);
+				dep++;
+				if(dep==MAX2){
+						printf("panne a %d,pid=%ld,term=%ld\n",i,(long)getpid(),term);
+						dm mpanne;
+						mpanne.type=4;
+						mpanne.dest=i;
+						mpanne.who=getpid();
+						mpanne.txt="";
+				   	    if (msgsnd(ta, &mpanne, sizeof(dm) - 4,0) == -1) {
+							printf("n'as pas pu mettre message de panne\n");
+						}		
+						kill(term,SIGUSR1);
+						printf("En attente de reparation\n");
+						raise(SIGSTOP);
+						printf("Repare\n");
+						dep=-1;
+					}
 			}
 
 		}
@@ -282,6 +330,16 @@ void ascenseur3(int ta,int da){
 	int asc3=open("asc3.txt",O_WRONLY|O_CREAT,0666);
 	close(1);
 	dup(asc3);
+	int dep=-1;
+	long term=0;
+	dm mid;				
+	if( msgrcv(ta, &mid, sizeof(dm) - 4, 1,IPC_NOWAIT) == -1) {
+		perror("a pas pu lire l'id du terminal\n");
+	}
+	else{
+		printf("Asc3:a lu %ld dans la file\n",(long) mid.who);
+		term=(long) mid.who;
+	}
 	int arr[2]={0,0};
 	while(1){
 				printf("Asc3:Ouverture porte niv0\n");
@@ -301,9 +359,26 @@ void ascenseur3(int ta,int da){
 			long prv=0;		
 			while(!allZeros(arr,2)){				
 				printf("\ndeplacement vers %d depuis%ld\n",arr[0],prv);
-				for(int j=min(prv,arr[0]);j<max(prv,arr[0])-1;j++){
+				for(int j=min(prv,arr[0]);j<max(prv,arr[0]);j++){
 					sleep(1);
 					printf("->");
+					dep++;
+					if(dep==MAX3){
+						printf("panne a %d,pid=%ld,term=%ld\n",j,(long)getpid(),term);
+						dm mpanne;
+						mpanne.type=4;
+						mpanne.dest=j;
+						mpanne.who=getpid();
+						mpanne.txt="";
+				   	    if (msgsnd(ta, &mpanne, sizeof(dm) - 4,0) == -1) {
+							printf("n'as pas pu mettre message de panne\n");
+						}		
+						kill(term,SIGUSR1);
+						printf("En attente de reparation\n");
+						raise(SIGSTOP);
+						printf("Repare\n");
+						dep=-1;
+					}
 				}
 				prv=arr[0];
 				printf("prv=%ld\n",prv);
@@ -327,9 +402,26 @@ void ascenseur3(int ta,int da){
 				}
 			}
 			printf("Asc3:retour vers niv0\n");
-			for(int i=0;i<prv;i++){
+			for(int i=prv;i>0;i--){
 				printf("->");				
 				sleep(1);
+				dep++;
+				if(dep==MAX3){
+						printf("panne a %d,pid=%ld,term=%ld\n",i,(long)getpid(),term);
+						dm mpanne;
+						mpanne.type=4;
+						mpanne.dest=i;
+						mpanne.who=getpid();
+						mpanne.txt="";
+				   	    if (msgsnd(ta, &mpanne, sizeof(dm) - 4,0) == -1) {
+							printf("n'as pas pu mettre message de panne\n");
+						}		
+						kill(term,SIGUSR1);
+						printf("En attente de reparation\n");
+						raise(SIGSTOP);
+						printf("Repare\n");
+						dep=-1;
+					}
 			}
 
 		}
@@ -354,6 +446,7 @@ if(!fork()){
 		}
 		//Reparer
 		kill(pmessage.who,SIGCONT);
+		V(3);
 	}
 	exit(0);
 }
@@ -374,6 +467,7 @@ if(!fork()){
 		}
 		//Reparer
 		kill(pmessage.who,SIGCONT);
+		V(4);
 	}
 	exit(0);
 }
@@ -420,11 +514,25 @@ V(3);V(4);
 	mid.dest=0;
 	mid.who=getpid();
 	mid.txt="";
+//Mettre le message d'identification(contenant son pid) dans la file ,pour asc1
 	if (msgsnd(ta, &mid, sizeof(dm) - 4,0) == -1) {
 		printf("n'as pas pu mettre message de id\n");
 	}
 	else
 		printf("Je suis %ld et j'ai mis mid\n",(long) getpid());
+//Mettre le message d'identification(contenant son pid) dans la file ,pour asc2	
+	if (msgsnd(ta, &mid, sizeof(dm) - 4,0) == -1) {
+		printf("n'as pas pu mettre message de id\n");
+	}
+	else
+		printf("Je suis %ld et j'ai mis mid\n",(long) getpid());
+//Mettre le message d'identification(contenant son pid) dans la file ,pour asc3
+	if (msgsnd(ta, &mid, sizeof(dm) - 4,0) == -1) {
+		printf("n'as pas pu mettre message de id\n");
+	}
+	else
+		printf("Je suis %ld et j'ai mis mid\n",(long) getpid());
+
  	if ((da = msgget(IPC_PRIVATE, 0750 | IPC_CREAT )) == -1) {
 	clearFile(2);
 	perror("Erreur de creation de la file\n");
