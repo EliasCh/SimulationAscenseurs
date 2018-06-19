@@ -574,7 +574,7 @@ tec1(tt);
 tec2(tt);
 										// 0 -> nombre délivreures , 1 sémaphore d'attente , 2 COUPETIF
 //creation des delivreures 
-V(0);V(1);V(8);V(9);
+V(0);V(1);
 for(int i=0;i<10;i++){
 	if(!fork()){
 		P(0);
@@ -628,8 +628,8 @@ while(1){
 	P(2);
 	dm message;
 	if( msgrcv(td, &message, sizeof(dm) - 4, 1,0) == -1) 
-	    perror("Erreur de lecture reponse serveur\n");	
-	//printf("%d:qqn a mis(dest=%d,who=%ld)\n",(i++),message.dest,(long) message.who);
+	    printf("Terminal interrompu pour faire autre chose\n");	
+	printf("%d:qqn a mis(dest=%d,who=%ld)\n",(i++),message.dest,(long) message.who);
 	
 if((message.dest%3)==0){
 
