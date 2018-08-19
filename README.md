@@ -1,12 +1,7 @@
-# README #
+# Projet académique | Academic Project # 
 
-This README would normally document whatever steps are necessary to get your application up and running.
-
-### What is this repository for? ###
-
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
+Il s'agit de la simulation de l'acces concourant aux ascenseurs d'un immeuble par les visiteurs.
+La solution dévelppée respecte les contraintes de capacité des ascenseurs, d'ordonnecement des arrivés et de l'interventions des techniciens pour réparer les pannes.
 
 ### How do I get set up? ###
 
@@ -16,14 +11,3 @@ This README would normally document whatever steps are necessary to get your app
 * Database configuration
 * How to run tests
 * Deployment instructions
-
-### Contribution guidelines ###
-
-* Writing tests
-* Code review
-* Other guidelines
-
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact
